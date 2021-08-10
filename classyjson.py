@@ -210,7 +210,12 @@ class BaseSchema(dict):
             self.validate(instance)
         return instance
 
-    def __init__(self, schema: TJson = None, **kws):
+    def __init__(
+        self, schema: Dict[str, TJson] = None, _optional: Dict[str, Any] = None, **kws
+    ):
+        for key, value in (_optional or {}).items():
+            if key not in kws and value is not None:
+                kws[key] = value
         kws["type"] = self.schema_type
         kws.update(schema or {})
         super().__init__(**kws)
@@ -224,11 +229,45 @@ class StrSchema(BaseSchema):
 
     schema_type: str = JSON_TYPE_STR
 
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        schema: Dict[str, TJson] = None,
+        length: int = None,
+        pattern: str = None,
+        format: str = None,
+        **kws,
+    ):
+        optional = {
+            "length": length,
+            "pattern": pattern,
+            "format": format,
+        }
+        super().__init__(schema=schema, _optional=optional, **kws)
+
 
 class NumberSchema(BaseSchema):
     """type=number"""
 
     schema_type: str = JSON_TYPE_NUMBER
+
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        schema: Dict[str, TJson] = None,
+        multipleOf: int = None,
+        minimum: float = None,
+        exclusiveMinimum: Union[float, bool] = None,
+        maximum: float = None,
+        exclusiveMaximum: Union[float, bool] = None,
+        **kws,
+    ):
+        optional = {
+            "multipleOf": multipleOf,
+            "minimum": minimum,
+            "exclusiveMinimum": exclusiveMinimum,
+            "maximum": maximum,
+            "exclusiveMaximum": exclusiveMaximum,
+        }
+        super().__init__(schema=schema, _optional=optional, **kws)
 
 
 class IntSchema(BaseSchema):
@@ -311,7 +350,7 @@ class ObjectSchema(BaseSchema):
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        schema: TJson = None,
+        schema: Dict[str, TJson] = None,
         properties: Dict[str, TJson] = None,
         patternProperties: Dict[str, str] = None,
         required: List[str] = None,
@@ -333,10 +372,7 @@ class ObjectSchema(BaseSchema):
             "propertyNames": propertyNames,
             "additionalProperties": additionalProperties,
         }
-        for key, value in optional.items():
-            if key not in kws and value is not None:
-                kws[key] = value
-        super().__init__(schema, **kws)
+        super().__init__(schema=schema, _optional=optional, **kws)
 
 
 class ArraySchema(BaseSchema):
@@ -401,7 +437,7 @@ class ArraySchema(BaseSchema):
 
     def __init__(
         self,
-        schema: TJson = None,
+        schema: Dict[str, TJson] = None,
         items: Union[TJsonObject, TJsonArray] = None,
         additionalItems: bool = None,
         contains: Dict[str, str] = None,
@@ -411,7 +447,6 @@ class ArraySchema(BaseSchema):
         **kws,
     ):
         kws["items"] = items
-
         optional = {
             "contains": contains,
             "additionalItems": additionalItems,
@@ -419,10 +454,7 @@ class ArraySchema(BaseSchema):
             "maxItems": maxItems,
             "uniqueItems": uniqueItems,
         }
-        for key, value in optional.items():
-            if key not in kws and value is not None:
-                kws[key] = value
-        super().__init__(schema=schema, **kws)
+        super().__init__(schema=schema, _optional=optional, **kws)
 
 
 class ClassyJson:  # pylint: disable=too-few-public-methods
