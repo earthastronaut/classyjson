@@ -5,7 +5,7 @@ import logging
 import classyjson
 
 
-class ConfigV1(classyjson.ObjectJson):
+class ConfigV1(classyjson.ClassyObject):
     """v1 of our config"""
 
     schema = {
@@ -16,7 +16,7 @@ class ConfigV1(classyjson.ObjectJson):
     }
 
 
-class ConfigLogging(classyjson.ObjectJson):
+class ConfigLogging(classyjson.ClassyObject):
     """Logging configuration"""
 
     schema = {
