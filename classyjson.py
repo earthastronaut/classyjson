@@ -21,7 +21,10 @@ import io
 import os
 
 # external
-import jsonschema  # typing: ignore
+try:
+    from jsonschema import validate as _jsonschema_validate
+except ImportError:
+    _jsonschema_validate = lambda x: x
 
 
 logger = logging.getLogger(__name__)
@@ -188,7 +191,7 @@ class BaseSchema(dict):
 
     def validate(self, instance: TJson, **kws):
         """Validate instance against schema"""
-        jsonschema.validate(instance, self.get_jsonschema(), **kws)
+        _jsonschema_validate(instance, self.get_jsonschema(), **kws)
 
     def load(self, instance: TJson, validate: bool = True) -> Any:
         """Parse into objects"""
