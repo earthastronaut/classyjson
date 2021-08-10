@@ -40,11 +40,10 @@ htmlcov/
 .tox/
 .coverage
 .coverage.*
-.cache
 nosetests.xml
 coverage.xml
 *.cover
-.pytest_cache
+*_cache
 
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
