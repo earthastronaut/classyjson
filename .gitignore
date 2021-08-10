@@ -1,5 +1,6 @@
 # Generic ignore
 untracked_*
+VERSION
 
 # postgres schema
 docker/postgres-schema

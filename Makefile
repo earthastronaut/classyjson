@@ -6,6 +6,7 @@ GIT_STATUS_SUMMARY=$(shell git status --porcelain)
 build:
 	@echo "Check that directory is clean. Please commit all changes."
 	[ "${GIT_STATUS_SUMMARY}" = "" ]  # [ "$$(git status --porcelain)" = "" ]
+	git describe --tags > VERSION	
 	source dev/bin/activate.sh && python setup.py sdist bdist_wheel
 
 # Clean the build
