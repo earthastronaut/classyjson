@@ -33,7 +33,12 @@ lint:
 	source dev/bin/activate.sh \
 		&& pylint.sh . \
 		&& flake8.sh . \
-		&& black.sh --check .
+		&& black.sh --check . \
+		&& mypy.sh classyjson.py
+
+lint-types:
+	source dev/bin/activate.sh \
+		&& mypy.sh classyjson.py
 
 # Display version
 version:
@@ -52,5 +57,5 @@ help:
 	@echo ""
 
 .DEFAULT_GOAL=help
-.PHONY: build check clean help lint test-dev test type-check version
+.PHONY: build clean-build clean help lint-types lint test-dev test venv version
 # echo .PHONY: $(grep -E "^[a-z,A-Z,0-9,-]+:.*" Makefile | sort | cut -d : -f 1 | xargs)

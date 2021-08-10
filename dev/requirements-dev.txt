@@ -7,7 +7,12 @@ ipython
 
 # Testing
 coverage
+pytest
+
+# Linting
 pylint
 black
 flake8
-pytest
+
+# Type Checking
+mypy
