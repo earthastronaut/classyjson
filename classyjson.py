@@ -39,7 +39,7 @@ __all__ = [
     "dump",
     "dumps",
     # types
-    "TClassyJson",
+    "TClassyJsonType",
     "TJson",
     "JSON_TYPE_STR",
     "JSON_TYPE_NUMBER",
@@ -48,7 +48,6 @@ __all__ = [
     "JSON_TYPE_ARRAY",
     "JSON_TYPE_BOOL",
     "JSON_TYPE_NULL",
-    "JSON_TYPE_DATETIME",
 ]
 
 
@@ -59,7 +58,7 @@ JSON_TYPE_OBJECT = "object"
 JSON_TYPE_ARRAY = "array"
 JSON_TYPE_BOOL = "boolean"
 JSON_TYPE_NULL = "null"
-JSON_TYPE_DATETIME = "datetime"
+# JSON_TYPE_DATETIME = "datetime"
 
 
 # typing
@@ -87,11 +86,19 @@ class TJsonObject(Protocol):
 TJson = Union[None, float, str, int, TJsonArray, TJsonObject]
 
 
-TClassyJson = Type["ClassyJson"]
+TClassyJsonType = Type["ClassyJson"]
+
+
+def _is_classy(obj: Any) -> bool:
+    return isinstance(obj, type) and issubclass(obj, ClassyJson)
 
 
 class DotDict(dict):
     """dot.notation access to dictionary keys"""
+
+    # do you overwrite existing attributes? e.g. self.items or self.keys
+    # if True then they are overwritten with the value
+    _overwrite_attrs = False
 
     def __init__(self, *args, **kws):
         super().__init__()
@@ -115,8 +122,12 @@ class DotDict(dict):
             value_dotdict = self._dictclass(value)
         else:
             value_dotdict = value
+
         if isinstance(name, str):
-            self.__dict__[name] = value_dotdict
+            if self._overwrite_attrs:
+                self.__dict__[name] = value_dotdict
+            elif not hasattr(self, name):
+                self.__dict__[name] = value_dotdict
         return super().__setitem__(name, value)
 
     def setdefault(self, key: KT, default: VT = None) -> VT:
@@ -163,7 +174,7 @@ class DotDict(dict):
         return self.__delitem__(name)
 
 
-def _get_jsonschema(schema: Union[TJson, TClassyJson, "BaseSchema"]) -> TJson:
+def _get_jsonschema(schema: Union[TJson, TClassyJsonType, "BaseSchema"]) -> TJson:
     """Get the jsonschema"""
     if isinstance(schema, list):
         return [_get_jsonschema(value) for value in schema]
@@ -199,8 +210,43 @@ class BaseSchema(dict):
             self.validate(instance)
         return instance
 
+    def __init__(self, schema: TJson = None, **kws):
+        kws["type"] = self.schema_type
+        kws.update(schema or {})
+        super().__init__(**kws)
+
 
 TBaseSchemaType = Type[BaseSchema]
+
+
+class StrSchema(BaseSchema):
+    """type=string"""
+
+    schema_type: str = JSON_TYPE_STR
+
+
+class NumberSchema(BaseSchema):
+    """type=number"""
+
+    schema_type: str = JSON_TYPE_NUMBER
+
+
+class IntSchema(BaseSchema):
+    """type=int"""
+
+    schema_type: str = JSON_TYPE_INTEGER
+
+
+class BoolSchema(BaseSchema):
+    """type=bool"""
+
+    schema_type: str = JSON_TYPE_BOOL
+
+
+class NullSchema(BaseSchema):
+    """type=null"""
+
+    schema_type: str = JSON_TYPE_NULL
 
 
 class ObjectSchema(BaseSchema):
@@ -226,8 +272,8 @@ class ObjectSchema(BaseSchema):
 
     @staticmethod
     def _load_prop(
-        property_schema: dict, value: TJson = None
-    ) -> Union[TJson, TClassyJson]:
+        property_schema: Union[TJsonObject, TClassyJsonType], value: TJson = None
+    ) -> Union[TJson, "ClassyJson"]:
         if value is None:
             if isinstance(property_schema, dict):
                 if "default" in property_schema:
@@ -238,7 +284,9 @@ class ObjectSchema(BaseSchema):
                 return None
             return None
 
-        if _is_classy(property_schema):
+        if isinstance(property_schema, type) and issubclass(
+            property_schema, ClassyJson
+        ):
             classy = property_schema
             return classy(value, validate=False)
 
@@ -261,12 +309,34 @@ class ObjectSchema(BaseSchema):
 
         return data
 
-    def __init__(self, properties=None, **kws):
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        schema: TJson = None,
+        properties: Dict[str, TJson] = None,
+        patternProperties: Dict[str, str] = None,
+        required: List[str] = None,
+        propertyNames: str = None,
+        minProperties: int = None,
+        maxProperties: int = None,
+        additionalProperties: bool = None,
+        **kws,
+    ):
         kws.update(
             type=self.schema_type,
             properties=properties,
         )
-        super().__init__(**kws)
+        optional = {
+            "minProperties": minProperties,
+            "maxProperties": maxProperties,
+            "patternProperties": patternProperties,
+            "required": required,
+            "propertyNames": propertyNames,
+            "additionalProperties": additionalProperties,
+        }
+        for key, value in optional.items():
+            if key not in kws and value is not None:
+                kws[key] = value
+        super().__init__(schema, **kws)
 
 
 class ArraySchema(BaseSchema):
@@ -329,20 +399,38 @@ class ArraySchema(BaseSchema):
                 items.append(inst)
         return items
 
-    def __init__(self, items: Union[TJsonObject, TJsonArray] = None, **kws):
-        kws.update(
-            type=self.schema_type,
-            items=items,
-        )
-        super().__init__(**kws)
+    def __init__(
+        self,
+        schema: TJson = None,
+        items: Union[TJsonObject, TJsonArray] = None,
+        additionalItems: bool = None,
+        contains: Dict[str, str] = None,
+        minItems: int = None,
+        maxItems: int = None,
+        uniqueItems: bool = None,
+        **kws,
+    ):
+        kws["items"] = items
+
+        optional = {
+            "contains": contains,
+            "additionalItems": additionalItems,
+            "minItems": minItems,
+            "maxItems": maxItems,
+            "uniqueItems": uniqueItems,
+        }
+        for key, value in optional.items():
+            if key not in kws and value is not None:
+                kws[key] = value
+        super().__init__(schema=schema, **kws)
 
 
 class ClassyJson:  # pylint: disable=too-few-public-methods
     """Python JSON Schema class object"""
 
     _schema_class: TBaseSchemaType = BaseSchema
-    _schema_raw: Dict[str, Union[TJson, TClassyJson]] = {}
-    schema: BaseSchema = BaseSchema({})
+    _schema_raw: Dict[str, Union[TJson, TClassyJsonType]] = {}
+    schema: BaseSchema
 
     def __init_subclass__(cls) -> None:
         schema_class = cls._schema_class
@@ -360,10 +448,6 @@ class ClassyJson:  # pylint: disable=too-few-public-methods
 
     def initialize(self):
         """Runs after init with different signature"""
-
-
-def _is_classy(obj: Any) -> bool:
-    return isinstance(obj, type) and issubclass(obj, ClassyJson)
 
 
 class ClassyObject(ClassyJson, DotDict):
@@ -417,8 +501,8 @@ def _load_json(
 
 def load(
     json_data: Union[str, Dict, IO[str]],
-    classy: TClassyJson = None,
-    classy_options: Tuple[str, Dict[str, TClassyJson]] = None,
+    classy: TClassyJsonType = None,
+    classy_options: Tuple[str, Dict[str, TClassyJsonType]] = None,
     **kws,
 ) -> Union[ClassyJson, TJson]:
     """Load generic."""
@@ -446,8 +530,8 @@ def load(
 
 def loads(
     json_data: str,
-    classy: TClassyJson = None,
-    classy_options: Tuple[str, Dict[str, TClassyJson]] = None,
+    classy: TClassyJsonType = None,
+    classy_options: Tuple[str, Dict[str, TClassyJsonType]] = None,
 ) -> Union[ClassyJson, TJson]:
     """Load from string"""
     return load(
