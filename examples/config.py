@@ -43,6 +43,9 @@ class ConfigV2(ConfigV1):
             "version": {
                 "type": "string",
             },
+            "items": {
+                "type": "array",
+            },
             "logging": ConfigLogging,
         }
     }
@@ -66,13 +69,21 @@ if __name__ == "__main__":
     data_config_v1 = {"version": "v1", "verbosity": 1}
     config_v1 = parse_config(data_config_v1)
     print(
+        "config_v1",
         config_v1.version,
         config_v1.verbosity,
+        config_v1["verbosity"],
     )
 
-    data_config_v2 = {"version": "v2", "logging": {"loglevel": "info"}}
+    data_config_v2 = {
+        "version": "v2",
+        "items": [1, 2, 3],
+        "logging": {"loglevel": "info"},
+    }
     config_v2 = parse_config(data_config_v2)
     print(
+        "config_v2",
+        config_v2["version"],
         config_v2.version,
         config_v2.logging.loglevel,
     )
