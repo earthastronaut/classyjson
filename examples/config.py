@@ -30,8 +30,9 @@ class ConfigLogging(classyjson.ClassyObject):
     }
     __slots__ = ["loglevel"]  # allows most editors to provide suggestions
 
-    def initialize(self):
+    def __init__(self, instance, validate=True):
         """Initialize logging"""
+        super().__init__(instance, validate=validate)
         logging.getLogger().setLevel(self.loglevel.upper())
 
 

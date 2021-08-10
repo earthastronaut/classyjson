@@ -598,9 +598,6 @@ class ClassyJson:  # pylint: disable=too-few-public-methods
             self.schema = self._schema_class(self.schema)
         self.schema.load(instance, validate=validate)
 
-    def initialize(self):
-        """Runs after init with different signature"""
-
 
 class ClassyObject(ClassyJson, DotDict):
     """Json Schema type 'object' """
@@ -613,7 +610,6 @@ class ClassyObject(ClassyJson, DotDict):
         self._dictclass = DotDict
         data = self.schema.load(instance, validate=False)
         self.update(data)
-        self.initialize()
 
 
 class ClassyArray(ClassyJson, list):
@@ -626,7 +622,6 @@ class ClassyArray(ClassyJson, list):
         super().__init__(instance, validate=validate)
         items = self.schema.load(instance, validate=False)
         self.extend(items)
-        self.initialize()
 
 
 # ############################################################################ #
