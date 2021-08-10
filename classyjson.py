@@ -2,6 +2,11 @@
 logic for a particular parameters schema.
 """
 # flake8: noqa: E501
+
+# ############################################################################ #
+# Imports
+# ############################################################################ #
+
 # standard
 import logging
 from typing import (  # pylint: disable=no-name-in-module
@@ -31,16 +36,26 @@ logger = logging.getLogger(__name__)
 
 
 __all__ = [
+    # dotdict
+    "DotDict",
+    # schema classes
+    "StrSchema",
+    "IntSchema",
+    "NumberSchema",
+    "BoolSchema",
+    "NullSchema",
+    "ObjectSchema",
+    "ArraySchema",
+    # classy json classes
     "ClassyJson",
     "ClassyObject",
     "ClassyArray",
+    # load/dump functions
     "load",
     "loads",
     "dump",
     "dumps",
-    # types
-    "TClassyJsonType",
-    "TJson",
+    # constants
     "JSON_TYPE_STR",
     "JSON_TYPE_NUMBER",
     "JSON_TYPE_INTEGER",
@@ -61,7 +76,9 @@ JSON_TYPE_NULL = "null"
 # JSON_TYPE_DATETIME = "datetime"
 
 
-# typing
+# ############################################################################ #
+# Types
+# ############################################################################ #
 
 KT = TypeVar("KT")
 VT = TypeVar("VT")
@@ -83,14 +100,21 @@ class TJsonObject(Protocol):
     __class__: Type[Dict[str, "TJson"]]  # type: ignore
 
 
+# all json base types
 TJson = Union[None, float, str, int, TJsonArray, TJsonObject]
-
-
+# BaseSchema type
+TBaseSchemaType = Type["BaseSchema"]
+# ClassyJson type
 TClassyJsonType = Type["ClassyJson"]
 
 
 def _is_classy(obj: Any) -> bool:
     return isinstance(obj, type) and issubclass(obj, ClassyJson)
+
+
+# ############################################################################ #
+# DotDict
+# ############################################################################ #
 
 
 class DotDict(dict):
@@ -174,6 +198,11 @@ class DotDict(dict):
         return self.__delitem__(name)
 
 
+# ############################################################################ #
+# Schema Classes
+# ############################################################################ #
+
+
 def _get_jsonschema(schema: Union[TJson, TClassyJsonType, "BaseSchema"]) -> TJson:
     """Get the jsonschema"""
     if isinstance(schema, list):
@@ -210,43 +239,61 @@ class BaseSchema(dict):
             self.validate(instance)
         return instance
 
-    def __init__(
-        self, schema: Dict[str, TJson] = None, _optional: Dict[str, Any] = None, **kws
-    ):
-        for key, value in (_optional or {}).items():
-            if key not in kws and value is not None:
-                kws[key] = value
-        kws["type"] = self.schema_type
-        kws.update(schema or {})
-        super().__init__(**kws)
-
-
-TBaseSchemaType = Type[BaseSchema]
+    def __init__(self, schema: Dict[str, TJson] = None, **kws):
+        schema_ = schema or {}
+        for key, value in kws.items():
+            if value is not None:
+                schema_[key] = value
+        schema_["type"] = self.schema_type
+        super().__init__(**schema_)
 
 
 class StrSchema(BaseSchema):
-    """type=string"""
+    """type=string
+
+    https://json-schema.org/understanding-json-schema/reference/string.html
+    """
 
     schema_type: str = JSON_TYPE_STR
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
         schema: Dict[str, TJson] = None,
-        length: int = None,
+        minLength: int = None,
+        maxLength: int = None,
         pattern: str = None,
         format: str = None,
         **kws,
     ):
-        optional = {
-            "length": length,
-            "pattern": pattern,
-            "format": format,
-        }
-        super().__init__(schema=schema, _optional=optional, **kws)
+        """String json type
+
+        Parameters
+        ----------
+        schema: can provide entire schema
+        maxLength: The length of a string can be constrained using the minLength and maxLength keywords.
+        minLength: The length of a string can be constrained using the minLength and maxLength keywords.
+        pattern: The pattern keyword is used to restrict a string to a particular regular expression.
+        format: The format keyword allows for basic semantic identification of certain kinds of string values that are commonly used.
+        **kws: any other keywords
+        """
+        super().__init__(
+            # as argument
+            schema=schema,
+            # specific
+            minLength=minLength,
+            maxLength=maxLength,
+            pattern=pattern,
+            format=format,
+            # any other
+            **kws,
+        )
 
 
 class NumberSchema(BaseSchema):
-    """type=number"""
+    """type=number
+
+    https://json-schema.org/understanding-json-schema/reference/numeric.html
+    """
 
     schema_type: str = JSON_TYPE_NUMBER
 
@@ -260,36 +307,64 @@ class NumberSchema(BaseSchema):
         exclusiveMaximum: Union[float, bool] = None,
         **kws,
     ):
-        optional = {
-            "multipleOf": multipleOf,
-            "minimum": minimum,
-            "exclusiveMinimum": exclusiveMinimum,
-            "maximum": maximum,
-            "exclusiveMaximum": exclusiveMaximum,
-        }
-        super().__init__(schema=schema, _optional=optional, **kws)
+        """Number json type
+
+        Parameters
+        ----------
+        schema: can provide entire schema
+        multipleOf: Numbers can be restricted to a multiple of a given number, using the multipleOf keyword.
+        minimum: Range for numbers.
+        exclusiveMinimum: Range for numbers.
+        maximum: Range for numbers.
+        exclusiveMaximum: Range for numbers.
+        **kws: any other keywords
+        """
+        super().__init__(
+            # as argument
+            schema=schema,
+            # specific
+            multipleOf=multipleOf,
+            minimum=minimum,
+            exclusiveMinimum=exclusiveMinimum,
+            maximum=maximum,
+            exclusiveMaximum=exclusiveMaximum,
+            # any other
+            **kws,
+        )
 
 
 class IntSchema(BaseSchema):
-    """type=int"""
+    """type=int
+
+    https://json-schema.org/understanding-json-schema/reference/numeric.html
+    """
 
     schema_type: str = JSON_TYPE_INTEGER
 
 
 class BoolSchema(BaseSchema):
-    """type=bool"""
+    """type=bool
+
+    https://json-schema.org/understanding-json-schema/reference/boolean.html
+    """
 
     schema_type: str = JSON_TYPE_BOOL
 
 
 class NullSchema(BaseSchema):
-    """type=null"""
+    """type=null
+
+    https://json-schema.org/understanding-json-schema/reference/null.html
+    """
 
     schema_type: str = JSON_TYPE_NULL
 
 
 class ObjectSchema(BaseSchema):
-    """Object json schema"""
+    """Object json schema
+
+    https://json-schema.org/understanding-json-schema/reference/object.html
+    """
 
     schema_type: str = JSON_TYPE_OBJECT
 
@@ -331,7 +406,7 @@ class ObjectSchema(BaseSchema):
 
         return value
 
-    # TODO: fix overload types so ObjectSchema can be TJsonObject
+    # TODO: fix overload types so ObjectSchema return TJsonObject
     def load(self, instance: TJson, validate: bool = True) -> Any:
         """ Load object """
         instance = super().load(instance, validate=validate)
@@ -360,23 +435,41 @@ class ObjectSchema(BaseSchema):
         additionalProperties: bool = None,
         **kws,
     ):
-        kws.update(
-            type=self.schema_type,
+        """Object json type
+
+        Parameters
+        ----------
+        schema: can provide entire schema
+        properties:
+        patternProperties:
+        required:
+        propertyNames:
+        minProperties:
+        maxProperties:
+        additionalProperties:
+        **kws: any other keywords
+        """
+        super().__init__(
+            # as argument
+            schema=schema,
+            # specific
             properties=properties,
+            patternProperties=patternProperties,
+            required=required,
+            propertyNames=propertyNames,
+            minProperties=minProperties,
+            maxProperties=maxProperties,
+            additionalProperties=additionalProperties,
+            # any other
+            **kws,
         )
-        optional = {
-            "minProperties": minProperties,
-            "maxProperties": maxProperties,
-            "patternProperties": patternProperties,
-            "required": required,
-            "propertyNames": propertyNames,
-            "additionalProperties": additionalProperties,
-        }
-        super().__init__(schema=schema, _optional=optional, **kws)
 
 
 class ArraySchema(BaseSchema):
-    """Schema Array Type"""
+    """Schema Array Type
+
+    https://json-schema.org/understanding-json-schema/reference/array.html
+    """
 
     schema_type: str = JSON_TYPE_ARRAY
 
@@ -446,15 +539,42 @@ class ArraySchema(BaseSchema):
         uniqueItems: bool = None,
         **kws,
     ):
-        kws["items"] = items
-        optional = {
-            "contains": contains,
-            "additionalItems": additionalItems,
-            "minItems": minItems,
-            "maxItems": maxItems,
-            "uniqueItems": uniqueItems,
-        }
-        super().__init__(schema=schema, _optional=optional, **kws)
+        """Array type
+
+        Parameters
+        ----------
+        schema: can provide entire schema
+        items: List or Tuple validation.
+        additionalItems:
+            The additionalItems keyword controls whether it’s valid to have
+            additional items in a tuple beyond what is defined in items.
+        contains:
+            While the items schema must be valid for every item in the array,
+            the contains schema only needs to validate against one or more
+            items in the array.
+        minItems: The length of the array.
+        maxItems: The length of the array.
+        uniqueItems: Each of the items in an array is unique.
+        **kws: any other keywords
+        """
+        super().__init__(
+            # as argument
+            schema=schema,
+            # specific
+            items=items,
+            additionalItems=additionalItems,
+            contains=contains,
+            minItems=minItems,
+            maxItems=maxItems,
+            uniqueItems=uniqueItems,
+            # any other
+            **kws,
+        )
+
+
+# ############################################################################ #
+# Classy Classes
+# ############################################################################ #
 
 
 class ClassyJson:  # pylint: disable=too-few-public-methods
@@ -507,6 +627,11 @@ class ClassyArray(ClassyJson, list):
         items = self.schema.load(instance, validate=False)
         self.extend(items)
         self.initialize()
+
+
+# ############################################################################ #
+# load/dump functions
+# ############################################################################ #
 
 
 def _load_json(
