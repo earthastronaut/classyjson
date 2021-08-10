@@ -7,7 +7,7 @@ import json
 import classyjson  # pylint: disable=import-error
 
 
-class MyJsonData(classyjson.ObjectJson):
+class MyJsonData(classyjson.ClassyObject):
     """Basic object type"""
 
     schema = {
@@ -31,6 +31,11 @@ class MyJsonData(classyjson.ObjectJson):
         },  # optional, along with other jsonschema keys
         "requires": ["planet"],
     }
+
+    def combined_age_population(self):
+        """Some method using the json data"""
+        pop = self.info.get("population", float("nan"))
+        return self.age * pop
 
 
 if __name__ == "__main__":
