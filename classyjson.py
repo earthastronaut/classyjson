@@ -146,13 +146,12 @@ class DotDict(dict):
             value_dotdict = self._dictclass(value)
         else:
             value_dotdict = value
-
         if isinstance(name, str):
             if self._overwrite_attrs:
                 self.__dict__[name] = value_dotdict
             elif not hasattr(self, name):
                 self.__dict__[name] = value_dotdict
-        return super().__setitem__(name, value)
+        return super().__setitem__(name, value_dotdict)
 
     def setdefault(self, key: KT, default: VT = None) -> VT:
         """Set default"""
@@ -519,13 +518,16 @@ class ArraySchema(BaseSchema):
             schema_items_iter = _inf_item_generator(None)
         items = []
         for schema_item, inst in zip(schema_items_iter, instance):
-            item_type = schema_item["type"]
-            if isinstance(item_type, type) and issubclass(item_type, ClassyJson):
-                classy = item_type
-                value = classy(inst, validate=False)
-                items.append(value)
-            else:
+            if schema_item is None:
                 items.append(inst)
+            else:
+                item_type = schema_item["type"]
+                if isinstance(item_type, type) and issubclass(item_type, ClassyJson):
+                    classy = item_type
+                    value = classy(inst, validate=False)
+                    items.append(value)
+                else:
+                    items.append(inst)
         return items
 
     def __init__(
@@ -586,12 +588,11 @@ class ClassyJson:  # pylint: disable=too-few-public-methods
 
     def __init_subclass__(cls) -> None:
         schema_class = cls._schema_class
-        if cls.schema is None:
-            raise TypeError(f"Must define schema for {cls}")
 
-        if not isinstance(cls.schema, BaseSchema):
-            cls._schema_raw = cls.schema.copy()
-            cls.schema = schema_class(**cls._schema_raw)
+        schema = getattr(cls, "schema", {}) or {}
+        if not isinstance(schema, BaseSchema):
+            cls._schema_raw = schema.copy()
+            cls.schema = schema_class(**schema)
 
     def __init__(self, instance: TJson, validate: bool = True):
         if not isinstance(self.schema, BaseSchema):
@@ -603,7 +604,6 @@ class ClassyObject(ClassyJson, DotDict):
     """Json Schema type 'object' """
 
     _schema_class: TBaseSchemaType = ObjectSchema
-    schema: BaseSchema = ObjectSchema({})
 
     def __init__(self, instance: TJson, validate: bool = True):
         super().__init__(instance, validate=validate)
@@ -616,7 +616,6 @@ class ClassyArray(ClassyJson, list):
     """Json Schema type 'array' """
 
     _schema_class: TBaseSchemaType = ArraySchema
-    schema: ArraySchema = ArraySchema({})
 
     def __init__(self, instance: TJson, validate: bool = True):
         super().__init__(instance, validate=validate)
