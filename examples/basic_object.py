@@ -4,7 +4,7 @@
 import json
 
 # internal
-import classyjson  # pylint: disable=import-error
+import classyjson
 
 
 class MyJsonData(classyjson.ClassyObject):
@@ -15,7 +15,7 @@ class MyJsonData(classyjson.ClassyObject):
         "properties": {  # properties are required
             "planet": {"type": "string"},
             "age": {"type": "integer"},
-            "contenents": {
+            "continents": {
                 "type": "array",
                 "items": {
                     "name": {"type", "string"},
