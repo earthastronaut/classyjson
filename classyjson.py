@@ -3,9 +3,8 @@ logic for a particular parameters schema.
 """
 # flake8: noqa: E501
 # standard
-from collections.abc import Iterable
 import logging
-from typing import Any, Tuple, Dict, Union, KT, VT
+from typing import Any, Tuple, Dict, List, Union, KT, VT
 import json
 import io
 import os
@@ -45,87 +44,6 @@ def _inf_item_generator(item):
     """Return this item"""
     while True:
         yield item
-
-
-class MetaBaseJson(type):
-    """Metadata class for checking the schema on the class"""
-
-    def __init__(cls, name, bases, dict_):
-        if not isinstance(cls.schema, dict):
-            raise TypeError("Class must define schema as dict")
-        cls.schema.setdefault("type", cls._schema_type)
-        super().__init__(name, bases, dict_)
-
-
-class BaseJson(metaclass=MetaBaseJson):
-    """Python JSON Schema class object"""
-
-    _schema_type = None
-    schema = {}
-
-    @classmethod
-    def get_jsonschema(cls: object) -> object:
-        """Generate the full jsonschema"""
-        return cls.schema.copy()
-
-    @classmethod
-    def _validate(cls: object, instance: TJsonTypes, **kws):
-        """Validate instance against schema"""
-        schema = cls.get_jsonschema()
-        jsonschema.validate(instance, schema, **kws)
-
-    @classmethod
-    def _parse(cls, instance: Dict[str, Any], validate: bool = True) -> Any:
-        if validate:
-            cls._validate(instance)
-        return instance
-
-
-class BaseObjectJson(BaseJson):
-    """Use with "type": "object" where all "properties" are known."""
-
-    _schema_type = JSON_TYPE_OBJECT
-    __slots__ = []
-
-    @classmethod
-    def _schema_properties(cls):
-        return cls.schema.get("properties", {})
-
-    @classmethod
-    def get_jsonschema(cls: object) -> object:
-        """Generate the full jsonschema"""
-        schema = cls.schema.copy()
-        properties = {}
-        for key, prop in schema.get("properties", {}).items():
-            if isinstance(prop, type) and issubclass(prop, BaseJson):
-                prop_schema = prop.get_jsonschema()
-            else:
-                prop_schema = prop
-            properties[key] = prop_schema
-        schema["properties"] = properties
-        return schema
-
-    @classmethod
-    def _parse(cls, instance: Dict[str, Any], validate: bool = True) -> Dict:
-        instance = super()._parse(instance, validate=validate)
-        if not isinstance(instance, dict):
-            raise TypeError(f"Wrong instance base type: {type(instance)}")
-
-        props = cls._schema_properties()
-        data = {}
-        for prop_key, prop_schema in props.items():
-            if prop_key not in instance:
-                data[prop_key] = None
-                continue
-            inst = instance[prop_key]
-            prop_type = prop_schema["type"]
-            if isinstance(prop_type, type) and issubclass(prop_type, BaseJson):
-                classy = prop_type
-                value = classy(inst, validate=False)
-            else:
-                value = inst
-            data[prop_key] = value
-        return data
 
 
 class DotDict(dict):
@@ -199,60 +117,119 @@ class DotDict(dict):
         return self.__delitem__(name)
 
 
-class ObjectJson(BaseObjectJson, DotDict):
-    """Json Schema type 'object' """
+class BaseSchema(dict):
+    """Base jsonschema"""
 
-    @classmethod
-    def _parse(cls, instance: Dict[str, Any], validate: bool = True) -> Dict:
-        data = super()._parse(instance, validate=validate)
+    schema_type = None
 
-        def _convert_to_class(obj):
-            if isinstance(obj, dict):
-                return DotDict(
-                    {key: _convert_to_class(value) for key, value in obj.items()}
-                )
-            elif isinstance(obj, str):
-                return obj
-            elif isinstance(obj, Iterable):
-                return obj.__class__(*(_convert_to_class(element) for element in obj))
+    def get_jsonschema(self):
+        """Get the jsonschema for this"""
+        data = {}
+        for key, value in self.items():
+            if isinstance(value, type) and issubclass(value, BaseJson):
+                value_jsonschema = value.schema.get_jsonschema()
+            elif isinstance(value, BaseSchema):
+                value_jsonschema = value.get_jsonschema()
             else:
-                return obj
+                value_jsonschema = value
+            data[key] = value_jsonschema
+        return data
 
-        data_converted = _convert_to_class(data)
-        return data_converted
+    def validate(self, instance: TJsonTypes, **kws):
+        """Validate instance against schema"""
+        jsonschema.validate(instance, self.get_jsonschema(), **kws)
 
-    def __init__(self, instance: Dict[str, Any], validate: bool = True):
-        super().__init__()
-        self._dictclass = DotDict
-        data = self._parse(instance, validate=validate)
-        self.update(data)
+    def load(self, instance: Dict[str, Any], validate: bool = True) -> Dict:
+        """Parse into objects"""
+        if validate:
+            self.validate(instance)
+        return instance
 
 
-class BaseArrayJson(BaseJson):
-    """Json Schema type 'array' """
+class ObjectSchema(BaseSchema):
+    """Object json schema"""
 
-    _schema_type = JSON_TYPE_ARRAY
+    schema_type = JSON_TYPE_OBJECT
 
-    @classmethod
-    def _schema_items(cls):
-        return cls.schema.get("items")
-
-    @classmethod
-    def _schema_contains(cls):
-        return cls.schema.get("contains")
-
-    @classmethod
-    def get_jsonschema(cls: object) -> object:
+    def get_jsonschema(self) -> dict:
         """Generate the full jsonschema"""
-        schema = cls.schema.copy()
+        schema = self.copy()
+        properties = {}
+        schema_properties = schema.get("properties", {})
+        for key, prop in schema_properties.items():
+            if isinstance(prop, type) and issubclass(prop, BaseSchema):
+                prop_schema = prop.get_jsonschema()
+            if isinstance(prop, type) and issubclass(prop, BaseJson):
+                prop_schema = prop.schema.get_jsonschema()
+            else:
+                prop_schema = prop
+            properties[key] = prop_schema
+        schema["properties"] = properties
+        return schema
+
+    def load(self, instance: Dict[str, Any], validate: bool = True) -> Dict:
+        """ Load object """
+        instance = super().load(instance, validate=validate)
+        if not isinstance(instance, dict):
+            raise TypeError(f"Wrong instance base type: {type(instance)}")
+
+        props = self.get("properties", {})
+        data = {}
+        for prop_key, prop_schema in props.items():
+            if prop_key not in instance:
+                if isinstance(prop_schema, type) and issubclass(
+                    prop_schema, BaseSchema
+                ):
+                    value = prop_schema()
+                elif isinstance(prop_schema, dict):
+                    if "default" in prop_schema:
+                        default = prop_schema["default"]
+                        if isinstance(default, type) and issubclass(
+                            default, BaseSchema
+                        ):
+                            value = default()
+                        else:
+                            value = default
+                else:
+                    value = None
+                data[prop_key] = value
+                continue
+            inst = instance[prop_key]
+            prop_type = prop_schema["type"]
+            if isinstance(prop_type, type) and issubclass(prop_type, BaseJson):
+                classy = prop_type
+                value = classy(inst, validate=False)
+            else:
+                value = inst
+            data[prop_key] = value
+        return data
+
+    def __init__(self, properties=None, **kws):
+        kws.update(
+            type=self.schema_type,
+            properties=properties,
+        )
+        super().__init__(**kws)
+
+
+class ArraySchema(BaseSchema):
+    """Schema Array Type"""
+
+    schema_type = JSON_TYPE_ARRAY
+
+    def get_jsonschema(self) -> dict:
+        """Get the jsonschema for this"""
+        schema = self.copy()
 
         items = schema.get("items")
-        if isinstance(items, type) and issubclass(items, BaseJson):
+        if isinstance(items, type) and issubclass(items, BaseSchema):
             schema["items"] = items.get_jsonschema()
+        elif isinstance(items, type) and issubclass(items, BaseJson):
+            schema["items"] = items.schema.get_jsonschema()
         elif isinstance(items, list):
             items_schema = []
             for item in items:
-                if isinstance(item, type) and issubclass(item, BaseJson):
+                if isinstance(item, type) and issubclass(item, BaseSchema):
                     items_schema.append(item.get_jsonschema)
                 else:
                     items_schema.append(dict(item))
@@ -261,13 +238,14 @@ class BaseArrayJson(BaseJson):
             schema["items"] = items
         return schema
 
-    @classmethod
-    def _parse(cls, instance: Dict[str, Any], validate: bool = True) -> Dict:
-        instance = super()._parse(instance, validate=validate)
+    def load(self, instance, validate=True) -> List:
+        """Parse into objects"""
+        instance = super().load(instance, validate=validate)
         if not isinstance(instance, list):
             raise TypeError(f"Instance must be of base type list not {type(instance)}")
 
-        schema_items = cls._schema_items()
+        schema_items = self.get("items", None)
+
         if isinstance(schema_items, dict):
             schema_items_iter = _inf_item_generator(schema_items)
         elif isinstance(schema_items, list):
@@ -281,18 +259,69 @@ class BaseArrayJson(BaseJson):
                 classy = item_type
                 value = classy(inst, validate=False)
                 items.append(value)
-
             else:
                 items.append(inst)
         return items
+
+    def __init__(self, items=None, **kws):
+        kws.update(
+            type=self.schema_type,
+            items=items,
+        )
+        super().__init__(**kws)
+
+
+class MetaBaseJson(type):
+    """Metadata class for checking the schema on the class"""
+
+    def __init__(cls, name, bases, dict_):
+        schema_class = cls._schema_class
+        cls._raw_schema = cls.schema.copy()
+        cls.schema = schema_class(**cls._raw_schema)
+        super().__init__(name, bases, dict_)
+
+
+class BaseJson(metaclass=MetaBaseJson):  # pylint: disable=too-few-public-methods
+    """Python JSON Schema class object"""
+
+    _schema_class: type = BaseSchema
+    schema: BaseSchema = {}
+
+    def __init__(self, instance: Dict[str, Any], validate: bool = True):
+        if not isinstance(self.schema, BaseSchema):
+            self.schema = self._schema_class(self.schema)
+        self.schema.load(instance, validate=validate)
+        self.initialize()
+
+    def initialize(self):
+        """Runs after init with different signature"""
+
+
+class ObjectJson(BaseJson, DotDict):
+    """Json Schema type 'object' """
+
+    _schema_class: type = ObjectSchema
+    schema: ObjectSchema = {}
+
+    def __init__(self, instance: Dict[str, Any], validate: bool = True):
+        super().__init__(instance, validate=validate)
+        self._dictclass = DotDict
+        data = self.schema.load(instance, validate=False)
+        self.update(data)
+        self.initialize()
 
 
 class ArrayJson(BaseJson, list):
     """Json Schema type 'array' """
 
+    _schema_class = ArraySchema
+    schema: ArraySchema = {}
+
     def __init__(self, instance: TJsonTypes, validate: bool = True):
-        items = self._parse(instance, validate=validate)
-        super().__init__(items)
+        super().__init__(instance, validate=validate)
+        items = self.schema.load(instance, validate=False)
+        self.extend(items)
+        self.initialize()
 
 
 TJsonTypes = Union[str, float, int, dict, list, bool, type(None)]
@@ -329,7 +358,7 @@ def load(
 
     if classy_options is not None:
         keyword, options = classy_options
-        if not isinstance(json_loaded):
+        if not isinstance(json_loaded, dict):
             raise TypeError(
                 f"classy_options can only be used for dict, not {type(json_loaded)}"
             )
