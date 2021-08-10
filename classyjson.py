@@ -160,23 +160,31 @@ class DotDict(dict):
         return self.__delitem__(name)
 
 
+def _get_jsonschema(schema: Union[TJson, TClassyJson, "BaseSchema"]) -> TJson:
+    """Get the jsonschema"""
+    if isinstance(schema, list):
+        return [_get_jsonschema(value) for value in schema]
+    if isinstance(schema, dict):
+        return {key: _get_jsonschema(value) for key, value in schema.items()}
+    if schema is None:
+        return None
+    if isinstance(schema, (float, str, int)):
+        return schema
+    if isinstance(schema, BaseSchema):
+        return schema.get_jsonschema()
+    if isinstance(schema, type) and issubclass(schema, ClassyJson):
+        return schema.schema.get_jsonschema()
+    raise TypeError(type(schema))
+
+
 class BaseSchema(dict):
     """Base jsonschema"""
 
     schema_type: str = ""
 
-    def get_jsonschema(self):
+    def get_jsonschema(self) -> TJson:
         """Get the jsonschema for this"""
-        data = {}
-        for key, value in self.items():
-            if isinstance(value, type) and issubclass(value, ClassyJson):
-                value_jsonschema = value.schema.get_jsonschema()
-            elif isinstance(value, BaseSchema):
-                value_jsonschema = value.get_jsonschema()
-            else:
-                value_jsonschema = value
-            data[key] = value_jsonschema
-        return data
+        return _get_jsonschema(dict(self))
 
     def validate(self, instance: TJson, **kws):
         """Validate instance against schema"""
@@ -197,7 +205,7 @@ class ObjectSchema(BaseSchema):
 
     schema_type: str = JSON_TYPE_OBJECT
 
-    def get_jsonschema(self) -> dict:
+    def get_jsonschema(self) -> TJson:
         """Generate the full jsonschema"""
         schema = self.copy()
         properties = {}
@@ -227,9 +235,8 @@ class ObjectSchema(BaseSchema):
                 return None
             return None
 
-        property_type = property_schema["type"]
-        if _is_classy(property_type):
-            classy = property_type
+        if _is_classy(property_schema):
+            classy = property_schema
             return classy(value, validate=False)
 
         return value
@@ -264,7 +271,7 @@ class ArraySchema(BaseSchema):
 
     schema_type: str = JSON_TYPE_ARRAY
 
-    def get_jsonschema(self) -> dict:
+    def get_jsonschema(self) -> TJson:
         """Get the jsonschema for this"""
         schema = self.copy()
 
@@ -327,10 +334,6 @@ class ArraySchema(BaseSchema):
         super().__init__(**kws)
 
 
-def _is_classy(obj: Any) -> bool:
-    return isinstance(obj, type) and issubclass(obj, BaseSchema)
-
-
 class ClassyJson:  # pylint: disable=too-few-public-methods
     """Python JSON Schema class object"""
 
@@ -351,10 +354,13 @@ class ClassyJson:  # pylint: disable=too-few-public-methods
         if not isinstance(self.schema, BaseSchema):
             self.schema = self._schema_class(self.schema)
         self.schema.load(instance, validate=validate)
-        self.initialize()
 
     def initialize(self):
         """Runs after init with different signature"""
+
+
+def _is_classy(obj: Any) -> bool:
+    return isinstance(obj, type) and issubclass(obj, ClassyJson)
 
 
 class ClassyObject(ClassyJson, DotDict):
