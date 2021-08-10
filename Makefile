@@ -17,7 +17,7 @@ clean-build:
 clean: clean-build
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
-	find . -type d -name "data_science_tools.egg-info" | xargs rm -r $1
+	find . -type d -name "*.egg-info" | xargs rm -r $1
 	rm -rf .venv && true
 
 # Run unit tests with coverage
@@ -46,7 +46,7 @@ version:
 
 # Create virtual environment
 venv:
-	source dev/bin/activate.sh
+	source dev/bin/activate.sh && which python
 
 # Show help
 help:

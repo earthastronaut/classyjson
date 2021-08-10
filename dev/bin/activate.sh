@@ -22,6 +22,5 @@ else
     echo export PATH=${PROJECT_PATH}/dev/bin:\$PATH >> ${VENV}/bin/activate
     source ${VENV}/bin/activate
     pip3 install --upgrade pip setuptools wheel
-    pip3 install -e ${PROJECT_PATH}
     pip3 install -r ${REQUIREMENTS_FILE}
 fi
