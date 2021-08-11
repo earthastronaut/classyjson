@@ -140,17 +140,25 @@ class DotDict(dict):
             error.args = (f"'{name}' not in {names}",)
             raise error
 
-    def __setitem__(self, name: KT, value: VT):
+    def _convert_value_type(self, value: VT) -> VT:
         # modify type on set
         if type(value) == dict:  # pylint: disable=unidiomatic-typecheck
-            value_dotdict = self._dictclass(value)
+            return self._dictclass(value)
+        elif isinstance(value, (list, tuple)):
+            return value.__class__(map(self._convert_value_type, value))
         else:
-            value_dotdict = value
+            return value
+
+    def _setitem_setattr(self, name: str, value: VT):
+        if self._overwrite_attrs:
+            self.__dict__[name] = value
+        elif not hasattr(self, name):
+            self.__dict__[name] = value
+
+    def __setitem__(self, name: KT, value: VT):
+        value_dotdict = self._convert_value_type(value)
         if isinstance(name, str):
-            if self._overwrite_attrs:
-                self.__dict__[name] = value_dotdict
-            elif not hasattr(self, name):
-                self.__dict__[name] = value_dotdict
+            self._setitem_setattr(name, value_dotdict)
         return super().__setitem__(name, value_dotdict)
 
     def setdefault(self, key: KT, default: VT = None) -> VT:
@@ -165,6 +173,10 @@ class DotDict(dict):
         for key, value in kws.items():
             self[key] = value
         return self
+
+    def pop(self, key: KT, default: VT = None) -> VT:
+        self.__dict__.pop(key, None)
+        return super().pop(key, default)
 
     def __delitem__(self, name: str):
         del self.__dict__[name]
@@ -187,10 +199,6 @@ class DotDict(dict):
             raise AttributeError(
                 f"{name} not in {tuple(self.__dict__.keys())}"
             ) from error
-
-    def __hasattr__(self, name: str):
-        """Use __contains__"""
-        return super().__contains__(name)
 
     def __delattr__(self, name: str):
         """Use __delitem__"""
