@@ -126,6 +126,12 @@ class TestDotDict(unittest.TestCase):
         obj.setdefault("b", 3)
         self.assertEqual(obj.b, 3)
 
+    def test_setattr(self):
+        obj = DotDict()
+        obj.a = 1
+        self.assertEqual(obj, {"a": 1})
+        self.assertEqual(obj.a, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
