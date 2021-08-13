@@ -310,7 +310,6 @@ class BaseSchema(dict):
             raise TypeError(f"Unknown schema_type {type(schema_type)}")
 
 
-
 class StrSchema(BaseSchema):
     """type=string
 
@@ -452,13 +451,6 @@ class ObjectSchema(BaseSchema):
         property_schema: Union[TJsonObject, TClassyJsonType], value: TJson = None
     ) -> Union[TJson, "ClassyJson"]:
         if value is None:
-            if isinstance(property_schema, dict):
-                if "default" in property_schema:
-                    default = property_schema["default"]
-                    if _is_classy(default):
-                        return default()
-                    return default
-                return None
             return None
 
         if isinstance(property_schema, type) and issubclass(
@@ -478,11 +470,16 @@ class ObjectSchema(BaseSchema):
 
         props = self.get("properties", {})
         data = {}
-        for key in instance:
-            data[key] = self._load_prop(
-                props[key],
-                instance[key],
-            )
+        for key, prop_schema in props.items():
+            if key in instance:
+                data[key] = self._load_prop(prop_schema, instance[key])
+            elif "default" in prop_schema:
+                default = prop_schema["default"]
+                if isinstance(default, type) and issubclass(default, ClassyJson):
+                    value = default()
+                else:
+                    value = default
+                data[key] = value
 
         return data
 
@@ -672,11 +669,15 @@ class ClassyObject(ClassyJson, DotDict):
 
     _schema_class: TBaseSchemaType = ObjectSchema
 
-    def __init__(self, instance: TJson, validate: bool = True):
-        super().__init__(instance, validate=validate)
+    def __init__(self, instance: TJson = None, validate: bool = True):
+        inst = instance or {}
+        super().__init__(inst, validate=validate)
         self._dictclass = DotDict
-        data = self.schema.load(instance, validate=False)
+        data = self.schema.load(inst, validate=False)
         self.update(data)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({dict.__repr__(self)})"
 
 
 class ClassyArray(ClassyJson, list):
@@ -684,10 +685,14 @@ class ClassyArray(ClassyJson, list):
 
     _schema_class: TBaseSchemaType = ArraySchema
 
-    def __init__(self, instance: TJson, validate: bool = True):
-        super().__init__(instance, validate=validate)
-        items = self.schema.load(instance, validate=False)
+    def __init__(self, instance: TJson = None, validate: bool = True):
+        inst = instance or []
+        super().__init__(inst, validate=validate)
+        items = self.schema.load(inst, validate=False)
         self.extend(items)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({list.__repr__(self)})"
 
 
 # ############################################################################ #

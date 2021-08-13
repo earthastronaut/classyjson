@@ -81,6 +81,37 @@ class TestClassy(unittest.TestCase):
         obj = classy(data)
         self.assertEqual(obj, data)
 
+    def test_classy_object_default(self):
+        class Obj2(ClassyObject):
+            schema = {
+                "properties": {
+                    "a": {
+                        "type": "integer",
+                        "default": 0,
+                    }
+                }
+            }
+
+        actual = Obj2()
+        self.assertEqual(actual, {"a": 0})
+
+    def test_classy_object_default_classy(self):
+        class Obj1(ClassyObject):
+            schema = {"properties": {"a": {"type": "object", "default": DotDict()}}}
+
+        class Obj2(ClassyObject):
+            schema = {
+                "properties": {
+                    "a": {
+                        "type": "object",
+                        "default": Obj1,
+                    }
+                }
+            }
+
+        actual = Obj2()
+        self.assertEqual(actual, {"a": {"a": {}}})
+
 
 class TestClassySchemaValidation(unittest.TestCase):
     def setUp(self):
