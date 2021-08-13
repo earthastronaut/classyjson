@@ -118,6 +118,17 @@ class TestSchema(unittest.TestCase):
         actual["type"] = set(actual["type"])
         self.assertEqual(actual, expected)
 
+    def test_jsonschema_with_arbitrary_types(self):
+        schema = ObjectSchema(
+            properties={"k1": StrSchema(default=unittest.TestCase)},
+        )
+        self.assertEqual(schema["properties"]["k1"]["default"], unittest.TestCase)
+        self.assertRaises(
+            TypeError,
+            schema.get_jsonschema,
+            msg="If you use arbitrary python default you can get_jsonschema",
+        )
+
 
 class TestSchemaLoad(unittest.TestCase):
     def _get_example_1(self):
