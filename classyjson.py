@@ -306,6 +306,9 @@ class BaseSchema(dict):
                 raise LookupError(
                     f"Unknown json types '{unknown_types}' not in {ALL_JSON_TYPES}"
                 )
+        else:
+            raise TypeError(f"Unknown schema_type {type(schema_type)}")
+
 
 
 class StrSchema(BaseSchema):

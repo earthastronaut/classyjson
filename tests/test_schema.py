@@ -192,6 +192,12 @@ class TestSchemaLoad(unittest.TestCase):
             type=["string", "blah"],
         )
 
+        self.assertRaises(
+            TypeError,
+            BaseSchema,
+            type={},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
