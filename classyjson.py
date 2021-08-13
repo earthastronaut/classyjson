@@ -21,7 +21,6 @@ from typing import (  # pylint: disable=no-name-in-module
     IO,
     Protocol,
 )
-from types import GeneratorType
 import json
 import io
 import os
@@ -264,14 +263,9 @@ class BaseSchema(dict):
 
     def load(self, instance: TJson, validate: bool = True) -> Any:
         """Parse into objects"""
-        if isinstance(instance, (GeneratorType, map)):
-            inst = list(instance)
-            breakpoint()
-        else:
-            inst = instance
         if validate:
-            self.validate(inst)
-        return inst
+            self.validate(instance)
+        return instance
 
     def __repr__(self):
         return f"{self.__class__.__name__}({super().__repr__()})"
