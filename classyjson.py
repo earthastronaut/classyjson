@@ -162,7 +162,7 @@ class DotDict(dict):
             elif value_type == tuple:
                 return tuple(gen)
             else:
-                return value.__class__(*gen)
+                return value.__class__(gen)
         else:
             return value
 

@@ -51,6 +51,17 @@ class TestDotDict(unittest.TestCase):
         self.assertEqual(actual.foo[0].foo, "bar")
         self.assertEqual(actual, data)
 
+    def test_subdicts_custom_iterable(self):
+        class MyList(list):
+            """Subclass"""
+
+        data = {"foo": MyList([{"foo": "bar"}, {"fofo": "baba"}])}
+        actual = DotDict(data)
+        self.assertIsInstance(actual.foo, MyList)
+        self.assertIsInstance(actual.foo[0], DotDict)
+        self.assertEqual(actual.foo[0].foo, "bar")
+        self.assertEqual(actual, data)
+
     def test_invalid_attrs(self):
         data = {
             "234": "its a number",
