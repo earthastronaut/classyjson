@@ -233,8 +233,6 @@ def _get_jsonschema(schema: Union[TJson, TClassyJsonType, "BaseSchema"]) -> TJso
         return [_get_jsonschema(value) for value in schema]
     if isinstance(schema, dict):
         return {key: _get_jsonschema(value) for key, value in schema.items()}
-    if schema is None:
-        return None
     if isinstance(schema, (float, str, int)):
         return schema
     if isinstance(schema, BaseSchema):
