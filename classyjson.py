@@ -74,8 +74,15 @@ JSON_TYPE_ARRAY = "array"
 JSON_TYPE_BOOL = "boolean"
 JSON_TYPE_NULL = "null"
 # JSON_TYPE_DATETIME = "datetime"
-
-
+ALL_JSON_TYPES = [
+    JSON_TYPE_STR,
+    JSON_TYPE_NUMBER,
+    JSON_TYPE_INTEGER,
+    JSON_TYPE_OBJECT,
+    JSON_TYPE_ARRAY,
+    JSON_TYPE_BOOL,
+    JSON_TYPE_NULL,
+]
 # ############################################################################ #
 # Types
 # ############################################################################ #
@@ -230,7 +237,11 @@ def _get_jsonschema(schema: Union[TJson, TClassyJsonType, "BaseSchema"]) -> TJso
 class BaseSchema(dict):
     """Base jsonschema"""
 
-    schema_type: str = ""
+    _schema_type: Union[str, list] = ""
+
+    @property
+    def schema_type(self):
+        return self["type"]
 
     def get_jsonschema(self) -> TJson:
         """Get the jsonschema for this"""
@@ -246,13 +257,42 @@ class BaseSchema(dict):
             self.validate(instance)
         return instance
 
+    def __add__(self, other):
+        self_types = (
+            self.schema_type
+            if isinstance(self.schema_type, list)
+            else [self.schema_type]
+        )
+        other_types = (
+            other.schema_type
+            if isinstance(other.schema_type, list)
+            else [other.schema_type]
+        )
+        types = list(set(self_types + other_types))
+        props = self.copy()
+        props.update(other)
+        props["type"] = types
+        return BaseSchema(props)
+
     def __init__(self, schema: Dict[str, TJson] = None, **kws):
         schema_ = schema or {}
         for key, value in kws.items():
             if value is not None:
                 schema_[key] = value
-        schema_["type"] = self.schema_type
+        schema_.setdefault("type", self._schema_type)
         super().__init__(**schema_)
+        schema_type = self.schema_type
+        if isinstance(schema_type, str):
+            if schema_type not in ALL_JSON_TYPES:
+                raise LookupError(
+                    f"Unknown json type '{schema_type}' not in {ALL_JSON_TYPES}"
+                )
+        elif isinstance(schema_type, list):
+            unknown_types = set(schema_type) - set(ALL_JSON_TYPES)
+            if len(unknown_types):
+                raise LookupError(
+                    f"Unknown json types '{unknown_types}' not in {ALL_JSON_TYPES}"
+                )
 
 
 class StrSchema(BaseSchema):
@@ -261,7 +301,7 @@ class StrSchema(BaseSchema):
     https://json-schema.org/understanding-json-schema/reference/string.html
     """
 
-    schema_type: str = JSON_TYPE_STR
+    _schema_type: str = JSON_TYPE_STR
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
@@ -302,7 +342,7 @@ class NumberSchema(BaseSchema):
     https://json-schema.org/understanding-json-schema/reference/numeric.html
     """
 
-    schema_type: str = JSON_TYPE_NUMBER
+    _schema_type: str = JSON_TYPE_NUMBER
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
@@ -346,7 +386,7 @@ class IntSchema(BaseSchema):
     https://json-schema.org/understanding-json-schema/reference/numeric.html
     """
 
-    schema_type: str = JSON_TYPE_INTEGER
+    _schema_type: str = JSON_TYPE_INTEGER
 
 
 class BoolSchema(BaseSchema):
@@ -355,7 +395,7 @@ class BoolSchema(BaseSchema):
     https://json-schema.org/understanding-json-schema/reference/boolean.html
     """
 
-    schema_type: str = JSON_TYPE_BOOL
+    _schema_type: str = JSON_TYPE_BOOL
 
 
 class NullSchema(BaseSchema):
@@ -364,7 +404,7 @@ class NullSchema(BaseSchema):
     https://json-schema.org/understanding-json-schema/reference/null.html
     """
 
-    schema_type: str = JSON_TYPE_NULL
+    _schema_type: str = JSON_TYPE_NULL
 
 
 class ObjectSchema(BaseSchema):
@@ -373,7 +413,7 @@ class ObjectSchema(BaseSchema):
     https://json-schema.org/understanding-json-schema/reference/object.html
     """
 
-    schema_type: str = JSON_TYPE_OBJECT
+    _schema_type: str = JSON_TYPE_OBJECT
 
     def get_jsonschema(self) -> TJson:
         """Generate the full jsonschema"""
@@ -422,11 +462,11 @@ class ObjectSchema(BaseSchema):
 
         props = self.get("properties", {})
         data = {}
-        for prop_key, prop_schema in props.items():
-            value = None
-            if prop_key in instance:
-                value = instance[prop_key]
-            data[prop_key] = self._load_prop(prop_schema, value)
+        for key in instance:
+            data[key] = self._load_prop(
+                props[key],
+                instance[key],
+            )
 
         return data
 
@@ -478,7 +518,7 @@ class ArraySchema(BaseSchema):
     https://json-schema.org/understanding-json-schema/reference/array.html
     """
 
-    schema_type: str = JSON_TYPE_ARRAY
+    _schema_type: str = JSON_TYPE_ARRAY
 
     def get_jsonschema(self) -> TJson:
         """Get the jsonschema for this"""
