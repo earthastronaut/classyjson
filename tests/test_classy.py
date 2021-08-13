@@ -1,15 +1,12 @@
 # pylint: disable=missing-class-docstring
 # pylint: disable=missing-module-docstring
 # pylint: disable=missing-function-docstring
+# pylint: disable=no-self-use
 
 import unittest
 
-try:
-    import jsonschema
-except ImportError:
-    jsonschema = None
-
 from classyjson import (
+    jsonschema,
     DotDict,
     ClassyArray,
     ClassyObject,

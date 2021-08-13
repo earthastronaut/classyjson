@@ -32,9 +32,9 @@ test-dev:
 # Run all linters on python files
 lint:
 	source dev/bin/activate.sh \
-		&& pylint.sh . \
-		&& flake8.sh . \
-		&& black.sh --check . \
+		&& pylint.sh classyjson tests \
+		&& flake8.sh classyjson.py tests \
+		&& black.sh --check classyjson.py tests \
 		&& mypy.sh classyjson.py
 
 lint-types:

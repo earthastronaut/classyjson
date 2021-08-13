@@ -28,8 +28,11 @@ import os
 
 # external
 try:
-    from jsonschema import validate as _jsonschema_validate
+    import jsonschema
+
+    _jsonschema_validate = jsonschema.validate
 except ImportError:
+    jsonschema = None
     _jsonschema_validate = lambda x: x
 
 
@@ -157,12 +160,11 @@ class DotDict(dict):
             gen = map(self._convert_value_type, value)
             if isinstance(value, ClassyArray):
                 return value.__class__(list(gen), validate=False)
-            elif value_type == list:
+            if value_type == list:
                 return list(gen)
-            elif value_type == tuple:
+            if value_type == tuple:
                 return tuple(gen)
-            else:
-                return value.__class__(gen)
+            return value.__class__(gen)
         else:
             return value
 
@@ -248,7 +250,8 @@ class BaseSchema(dict):
     _schema_type: Union[str, list] = ""
 
     @property
-    def schema_type(self):
+    def schema_type(self) -> Union[str, list]:
+        """Return the type"""
         return self["type"]
 
     def get_jsonschema(self) -> TJson:
@@ -325,7 +328,7 @@ class StrSchema(BaseSchema):
         minLength: int = None,
         maxLength: int = None,
         pattern: str = None,
-        format: str = None,
+        format: str = None,  # pylint: disable=redefined-builtin
         **kws,
     ):
         """String json type
@@ -471,7 +474,7 @@ class ObjectSchema(BaseSchema):
 
     # TODO: fix overload types so ObjectSchema return TJsonObject
     def load(self, instance: TJson, validate: bool = True) -> Any:
-        """ Load object """
+        """Load object"""
         instance = super().load(instance, validate=validate)
         if not isinstance(instance, dict):
             raise TypeError(f"Wrong instance base type: {type(instance)}")
@@ -668,7 +671,7 @@ class ClassyJson:  # pylint: disable=too-few-public-methods
 
 
 class ClassyObject(ClassyJson, DotDict):
-    """Json Schema type 'object' """
+    """Json Schema type 'object'"""
 
     _schema_class: TBaseSchemaType = ObjectSchema
 
@@ -680,7 +683,7 @@ class ClassyObject(ClassyJson, DotDict):
 
 
 class ClassyArray(ClassyJson, list):
-    """Json Schema type 'array' """
+    """Json Schema type 'array'"""
 
     _schema_class: TBaseSchemaType = ArraySchema
 
