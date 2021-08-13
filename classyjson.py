@@ -21,6 +21,7 @@ from typing import (  # pylint: disable=no-name-in-module
     IO,
     Protocol,
 )
+from types import GeneratorType
 import json
 import io
 import os
@@ -149,10 +150,19 @@ class DotDict(dict):
 
     def _convert_value_type(self, value: VT) -> VT:
         # modify type on set
-        if type(value) == dict:  # pylint: disable=unidiomatic-typecheck
+        value_type = type(value)
+        if value_type == dict:  # pylint: disable=unidiomatic-typecheck
             return self._dictclass(value)
         elif isinstance(value, (list, tuple)):
-            return value.__class__(map(self._convert_value_type, value))
+            gen = map(self._convert_value_type, value)
+            if isinstance(value, ClassyArray):
+                return value.__class__(list(gen), validate=False)
+            elif value_type == list:
+                return list(gen)
+            elif value_type == tuple:
+                return tuple(gen)
+            else:
+                return value.__class__(*gen)
         else:
             return value
 
@@ -253,9 +263,17 @@ class BaseSchema(dict):
 
     def load(self, instance: TJson, validate: bool = True) -> Any:
         """Parse into objects"""
+        if isinstance(instance, (GeneratorType, map)):
+            inst = list(instance)
+            breakpoint()
+        else:
+            inst = instance
         if validate:
-            self.validate(instance)
-        return instance
+            self.validate(inst)
+        return inst
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({super().__repr__()})"
 
     def __add__(self, other):
         self_types = (
@@ -646,6 +664,9 @@ class ClassyJson:  # pylint: disable=too-few-public-methods
         if not isinstance(self.schema, BaseSchema):
             self.schema = self._schema_class(self.schema)
         self.schema.load(instance, validate=validate)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({super().__repr__()})"
 
 
 class ClassyObject(ClassyJson, DotDict):
