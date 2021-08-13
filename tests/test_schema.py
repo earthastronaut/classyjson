@@ -129,6 +129,10 @@ class TestSchema(unittest.TestCase):
             msg="If you use arbitrary python default you can get_jsonschema",
         )
 
+    def test_type_check(self):
+        self.assertRaises(TypeError, ObjectSchema().load, [], validate=False)
+        self.assertRaises(TypeError, ArraySchema().load, {}, validate=False)
+
 
 class TestSchemaLoad(unittest.TestCase):
     def _get_example_1(self):
