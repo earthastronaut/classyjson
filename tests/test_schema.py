@@ -11,6 +11,7 @@ from classyjson import (
     JSON_TYPE_INTEGER,
     JSON_TYPE_NUMBER,
     JSON_TYPE_ARRAY,
+    BaseSchema,
     StrSchema,
     IntSchema,
     NumberSchema,
@@ -176,6 +177,19 @@ class TestSchemaLoad(unittest.TestCase):
             jsonschema.exceptions.ValidationError,
             schema.load,
             data,
+        )
+
+    def test_unknown(self):
+        self.assertRaises(
+            LookupError,
+            BaseSchema,
+            type="blah",
+        )
+
+        self.assertRaises(
+            LookupError,
+            BaseSchema,
+            type=["string", "blah"],
         )
 
 
