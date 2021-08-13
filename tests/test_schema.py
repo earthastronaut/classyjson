@@ -133,6 +133,25 @@ class TestSchema(unittest.TestCase):
         self.assertRaises(TypeError, ObjectSchema().load, [], validate=False)
         self.assertRaises(TypeError, ArraySchema().load, {}, validate=False)
 
+    def test_array_items_list(self):
+        schema = ArraySchema(
+            items=[
+                IntSchema(),
+                {"type": "object", "properties": {"k1": {"type": "integer"}}},
+            ]
+        )
+        data = [1, {"k1": 2}]
+        schema.validate(data)
+        actual = schema.get_jsonschema()
+        expected = {
+            "type": "array",
+            "items": [
+                {"type": "integer"},
+                {"type": "object", "properties": {"k1": {"type": "integer"}}},
+            ],
+        }
+        self.assertEqual(actual, expected)
+
 
 class TestSchemaLoad(unittest.TestCase):
     def _get_example_1(self):

@@ -112,6 +112,24 @@ class TestClassy(unittest.TestCase):
         actual = Obj2()
         self.assertEqual(actual, {"a": {"a": {}}})
 
+    def test_array_items(self):
+        classy1, data1 = _get_example_class_1()
+
+        class MyArrItems(ClassyArray):
+            scheme = {
+                "items": [
+                    {"type": "integer"},
+                    classy1,
+                ]
+            }
+
+        data = [
+            42,
+            data1,
+        ]
+        obj = MyArrItems(data)
+        self.assertEqual(obj, data)
+
 
 class TestClassySchemaValidation(unittest.TestCase):
     def setUp(self):
