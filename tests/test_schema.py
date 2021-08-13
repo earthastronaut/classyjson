@@ -65,6 +65,10 @@ class TestSchema(unittest.TestCase):
         s1 = IntSchema()
         s2 = StrSchema(format="date-time")
         actual = s1 + s2
+
+        actual.validate("2")
+        actual.validate('"2021-01-01"')
+
         expected = {
             "type": {
                 JSON_TYPE_INTEGER,
@@ -80,6 +84,10 @@ class TestSchema(unittest.TestCase):
         s2 = StrSchema(format="date-time")
         s3 = StrSchema(format="email")
         actual = (s1 + s2) + s3
+
+        actual.validate("2")
+        actual.validate('"hello@example.com"')
+
         expected = {
             "type": {
                 JSON_TYPE_INTEGER,
@@ -95,6 +103,11 @@ class TestSchema(unittest.TestCase):
         s2 = StrSchema(format="date-time")
         s3 = ArraySchema(items=NumberSchema())
         actual = s1 + s2 + s3
+
+        actual.validate("2")
+        actual.validate('"2021-01-01"')
+        actual.validate("[1, 2, 3]")
+
         expected = {
             "type": {
                 JSON_TYPE_INTEGER,
