@@ -112,6 +112,13 @@ class TestDotDict(unittest.TestCase):
         self.assertEqual(actual, data)
         self.assertTrue(not hasattr(actual, "hello"))
 
+    def test_overwriter(self):
+        class OverwriteDotDict(DotDict):
+            _overwrite_attrs = True
+
+        obj = OverwriteDotDict({"items": "bwahaha"})
+        self.assertEqual(obj.items, "bwahaha")
+
 
 if __name__ == "__main__":
     unittest.main()
