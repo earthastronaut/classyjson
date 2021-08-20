@@ -118,10 +118,6 @@ TBaseSchemaType = Type["BaseSchema"]
 TClassyJsonType = Type["ClassyJson"]
 
 
-def _is_classy(obj: Any) -> bool:
-    return isinstance(obj, type) and issubclass(obj, ClassyJson)
-
-
 # ############################################################################ #
 # DotDict
 # ############################################################################ #
@@ -434,7 +430,7 @@ class ObjectSchema(BaseSchema):
             for key, prop in self.schema_properties.items():
                 if isinstance(prop, BaseSchema):
                     prop_schema = prop.get_jsonschema()
-                elif _is_classy(prop):
+                elif isinstance(prop, type) and issubclass(prop, ClassyJson):
                     prop_schema = prop.schema.get_jsonschema()
                 else:
                     prop_schema = prop
@@ -573,15 +569,15 @@ class ArraySchema(BaseSchema):
             return schema
         elif isinstance(items, BaseSchema):
             schema["items"] = items.get_jsonschema()
-        elif _is_classy(items):
+        elif isinstance(items, type) and issubclass(items, ClassyJson):
             schema["items"] = items.schema.get_jsonschema()
         elif isinstance(items, list):
             items_schema = []
             for item in items:
                 if isinstance(item, BaseSchema):
                     items_schema.append(item.get_jsonschema())
-                elif _is_classy(item):
-                    items_schema.append(item.schema.get_jsonschema)
+                elif isinstance(item, type) and issubclass(item, ClassyJson):
+                    items_schema.append(item.schema.get_jsonschema())
                 else:
                     items_schema.append(dict(item))
             schema["items"] = items_schema

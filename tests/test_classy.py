@@ -168,7 +168,7 @@ class TestClassyArray(unittest.TestCase):
         classy1, data1 = _get_example_class_1()
 
         class MyArrItems(ClassyArray):
-            scheme = {
+            schema = {
                 "items": [
                     {"type": "integer"},
                     classy1,
@@ -182,9 +182,30 @@ class TestClassyArray(unittest.TestCase):
         obj = MyArrItems(data)
         self.assertEqual(obj, data)
 
+    def test_array_items_get_schema(self):
+        class MyArrItems(ClassyArray):
+            schema = {
+                "items": [
+                    {"type": "integer"},
+                    ClassyObject,
+                    ClassyArray,
+                ]
+            }
+
+        actual = MyArrItems.schema.get_jsonschema()
+        expected = {
+            "type": "array",
+            "items": [
+                {"type": "integer"},
+                {"type": "object"},
+                {"type": "array"},
+            ],
+        }
+        self.assertEqual(actual, expected)
+
     def test_array_items_dict(self):
         class MyArrItems(ClassyArray):
-            scheme = {
+            schema = {
                 "items": {
                     "type": "string",
                 }
