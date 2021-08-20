@@ -5,6 +5,7 @@
 import unittest
 
 import classyjson
+from classyjson import ClassyObject
 
 
 class TestDefaultJsonLoad(unittest.TestCase):
@@ -17,6 +18,17 @@ class TestDefaultJsonLoad(unittest.TestCase):
 
         actual = classyjson.load('"hello"')
         self.assertEqual(actual, "hello")
+
+    def test_load_classy(self):
+        class MyClassy(ClassyObject):
+            schema = {"properties": {"k1": {"type": "integer"}}}
+
+        obj = classyjson.load(
+            '{"k1": 1}',
+            classy=MyClassy,
+        )
+        self.assertIsInstance(obj, MyClassy)
+        self.assertEqual(obj, {"k1": 1})
 
 
 if __name__ == "__main__":

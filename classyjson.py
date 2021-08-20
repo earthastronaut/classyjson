@@ -655,10 +655,10 @@ class ClassyJson:  # pylint: disable=too-few-public-methods
             cls._schema_raw = schema.copy()
             cls.schema = schema_class(**schema)
 
-    def __init__(self, instance: TJson, validate: bool = True):
+    def __init__(self):
+        """self, instance: TJson, validate: bool = True"""
         if not isinstance(self.schema, BaseSchema):
             self.schema = self._schema_class(self.schema)
-        self.schema.load(instance, validate=validate)
 
     def __repr__(self):
         return f"{self.__class__.__name__}({super().__repr__()})"
@@ -670,10 +670,9 @@ class ClassyObject(ClassyJson, DotDict):
     _schema_class: TBaseSchemaType = ObjectSchema
 
     def __init__(self, instance: TJson = None, validate: bool = True):
-        inst = instance or {}
-        super().__init__(inst, validate=validate)
+        super().__init__()
         self._dictclass = DotDict
-        data = self.schema.load(inst, validate=False)
+        data = self.schema.load(instance or {}, validate=validate)
         self.update(data)
 
     def __repr__(self):
@@ -686,9 +685,8 @@ class ClassyArray(ClassyJson, list):
     _schema_class: TBaseSchemaType = ArraySchema
 
     def __init__(self, instance: TJson = None, validate: bool = True):
-        inst = instance or []
-        super().__init__(inst, validate=validate)
-        items = self.schema.load(inst, validate=False)
+        super().__init__()
+        items = self.schema.load(instance or [], validate=validate)
         self.extend(items)
 
     def __repr__(self):
