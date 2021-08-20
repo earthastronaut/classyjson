@@ -152,6 +152,15 @@ class TestSchema(unittest.TestCase):
         }
         self.assertEqual(actual, expected)
 
+    def test_array_items_get_schema_unknown(self):
+        schema = ArraySchema(
+            items=2,
+        )
+        self.assertRaises(
+            TypeError,
+            schema.get_jsonschema,
+        )
+
 
 class TestSchemaLoad(unittest.TestCase):
     def _get_example_1(self):

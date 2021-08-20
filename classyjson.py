@@ -571,6 +571,8 @@ class ArraySchema(BaseSchema):
             schema["items"] = items.get_jsonschema()
         elif isinstance(items, type) and issubclass(items, ClassyJson):
             schema["items"] = items.schema.get_jsonschema()
+        elif isinstance(items, dict):
+            schema["items"] = items.copy()
         elif isinstance(items, list):
             items_schema = []
             for item in items:
@@ -581,8 +583,8 @@ class ArraySchema(BaseSchema):
                 else:
                     items_schema.append(dict(item))
             schema["items"] = items_schema
-        elif items is not None:
-            schema["items"] = items
+        else:
+            raise TypeError(f"Unknown type {type(items)}")
         return schema
 
     def load(self, instance: TJson, validate: bool = True) -> Any:
