@@ -559,11 +559,16 @@ class ArraySchema(BaseSchema):
 
     _schema_type: str = JSON_TYPE_ARRAY
 
+    @property
+    def schema_items(self) -> Optional[Union[Dict[str, TJson], List[TJson]]]:
+        """items"""
+        return self.get("items")
+
     def get_jsonschema(self) -> TJson:
         """Get the jsonschema for this"""
         schema = self.copy()
 
-        items = schema.get("items")
+        items = self.schema_items
         if items is None:
             return schema
         elif isinstance(items, BaseSchema):
@@ -595,14 +600,14 @@ class ArraySchema(BaseSchema):
             while True:
                 yield item
 
-        schema_items = self.get("items", None)
+        schema_items = self.schema_items
 
         if isinstance(schema_items, dict):
             schema_items_iter = _inf_item_generator(schema_items)
         elif isinstance(schema_items, list):
             schema_items_iter = schema_items
         else:
-            schema_items_iter = _inf_item_generator(None)
+            schema_items_iter = _inf_item_generator(schema_items)
         items = []
         for schema_item, inst in zip(schema_items_iter, instance):
             if schema_item is None:

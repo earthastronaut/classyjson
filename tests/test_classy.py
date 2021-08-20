@@ -113,24 +113,6 @@ class TestClassy(unittest.TestCase):
         actual = Obj2()
         self.assertEqual(actual, {"a": {"a": {}}})
 
-    def test_array_items(self):
-        classy1, data1 = _get_example_class_1()
-
-        class MyArrItems(ClassyArray):
-            scheme = {
-                "items": [
-                    {"type": "integer"},
-                    classy1,
-                ]
-            }
-
-        data = [
-            42,
-            data1,
-        ]
-        obj = MyArrItems(data)
-        self.assertEqual(obj, data)
-
     def test_as_schema(self):
         schema = ObjectSchema(
             properties={
@@ -178,6 +160,67 @@ class TestClassy(unittest.TestCase):
         expected = {"a": 2, "b": 42}
         actual = MyClassyObj(expected)
         self.assertIsInstance(actual, MyClassyObj)
+        self.assertEqual(actual, expected)
+
+
+class TestClassyArray(unittest.TestCase):
+    def test_array_items(self):
+        classy1, data1 = _get_example_class_1()
+
+        class MyArrItems(ClassyArray):
+            scheme = {
+                "items": [
+                    {"type": "integer"},
+                    classy1,
+                ]
+            }
+
+        data = [
+            42,
+            data1,
+        ]
+        obj = MyArrItems(data)
+        self.assertEqual(obj, data)
+
+    def test_array_items_dict(self):
+        class MyArrItems(ClassyArray):
+            scheme = {
+                "items": {
+                    "type": "string",
+                }
+            }
+
+        data = [
+            "foo",
+            "bar",
+        ]
+        obj = MyArrItems(data)
+        self.assertEqual(obj, data)
+
+    def test_array_items_clasy(self):
+        class MyArrItems(ClassyArray):
+            schema = {
+                "items": ClassyObject,
+            }
+
+        data = [
+            {"a": 1},
+            {"b": 2},
+        ]
+        obj = MyArrItems(data)
+        self.assertEqual(obj, data)
+        self.assertEqual(obj, data)
+        self.assertIsInstance(obj[0], ClassyObject)
+        self.assertEqual(obj[0].a, 1)
+
+    def test_array_get_schema_classy(self):
+        class MyArrItems(ClassyArray):
+            schema = {
+                "items": ClassyObject,
+            }
+
+        expected = {"type": "array", "items": {"type": "object"}}
+        actual = MyArrItems.schema.get_jsonschema()  # pylint: disable=no-member
         self.assertEqual(actual, expected)
 
 
