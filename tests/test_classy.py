@@ -166,6 +166,20 @@ class TestClassy(unittest.TestCase):
         }
         self.assertEqual(actual, expected)
 
+    def test_additional_properties(self):
+        class MyClassyObj(ClassyObject):
+            schema = {
+                "properties": {
+                    "a": {"type": "integer"},
+                },
+                "additionalProperties": True,
+            }
+
+        expected = {"a": 2, "b": 42}
+        actual = MyClassyObj(expected)
+        self.assertIsInstance(actual, MyClassyObj)
+        self.assertEqual(actual, expected)
+
 
 class TestClassySchemaValidation(unittest.TestCase):
     def setUp(self):
