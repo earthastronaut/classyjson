@@ -192,7 +192,7 @@ class TestClassyArray(unittest.TestCase):
                 ]
             }
 
-        actual = MyArrItems.schema.get_jsonschema()
+        actual = MyArrItems.schema.get_jsonschema()  # pylint: disable=no-member
         expected = {
             "type": "array",
             "items": [
