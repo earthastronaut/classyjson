@@ -236,11 +236,7 @@ def _get_jsonschema(schema: Union[TJson, TClassyJsonType, "BaseSchema"]) -> TJso
         return {key: _get_jsonschema(value) for key, value in schema.items()}
     if isinstance(schema, (float, str, int)):
         return schema
-    if isinstance(schema, BaseSchema):
-        return schema.get_jsonschema()
-    if isinstance(schema, type) and issubclass(schema, ClassyJson):
-        return schema.schema.get_jsonschema()
-    raise TypeError(type(schema))
+    raise TypeError(type(schema))  # pragma: no cover
 
 
 class BaseSchema(dict):
@@ -433,17 +429,17 @@ class ObjectSchema(BaseSchema):
     def get_jsonschema(self) -> TJson:
         """Generate the full jsonschema"""
         schema = self.copy()
-        properties = {}
-        schema_properties = schema.get("properties", {})
-        for key, prop in schema_properties.items():
-            if isinstance(prop, BaseSchema):
-                prop_schema = prop.get_jsonschema()
-            elif _is_classy(prop):
-                prop_schema = prop.schema.get_jsonschema()
-            else:
-                prop_schema = prop
-            properties[key] = prop_schema
-        schema["properties"] = properties
+        if self.schema_properties:
+            properties = {}
+            for key, prop in self.schema_properties.items():
+                if isinstance(prop, BaseSchema):
+                    prop_schema = prop.get_jsonschema()
+                elif _is_classy(prop):
+                    prop_schema = prop.schema.get_jsonschema()
+                else:
+                    prop_schema = prop
+                properties[key] = prop_schema
+            schema["properties"] = properties
         return schema
 
     @property

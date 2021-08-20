@@ -10,6 +10,7 @@ from classyjson import (
     DotDict,
     ClassyArray,
     ClassyObject,
+    ObjectSchema,
 )
 
 
@@ -129,6 +130,41 @@ class TestClassy(unittest.TestCase):
         ]
         obj = MyArrItems(data)
         self.assertEqual(obj, data)
+
+    def test_as_schema(self):
+        schema = ObjectSchema(
+            properties={
+                "a": ClassyObject,
+            }
+        )
+        actual = schema.get_jsonschema()
+        expected = {
+            "type": "object",
+            "properties": {
+                "a": {"type": "object"},
+            },
+        }
+        self.assertEqual(actual, expected)
+
+    def test_as_schema_custom(self):
+        class MyClassy(ClassyArray):
+            schema = {
+                "maxLength": 42,
+            }
+
+        schema = ObjectSchema(
+            properties={
+                "a": MyClassy,
+            }
+        )
+        actual = schema.get_jsonschema()
+        expected = {
+            "type": "object",
+            "properties": {
+                "a": {"type": "array", "maxLength": 42},
+            },
+        }
+        self.assertEqual(actual, expected)
 
 
 class TestClassySchemaValidation(unittest.TestCase):
