@@ -446,6 +446,16 @@ class ObjectSchema(BaseSchema):
         schema["properties"] = properties
         return schema
 
+    @property
+    def schema_properties(self) -> Optional[Dict[str, TJson]]:
+        """properties"""
+        return self.get("properties")
+
+    @property
+    def schema_additional_properties(self) -> Optional[bool]:
+        """additionalProperties"""
+        return self.get("additionalProperties")
+
     @staticmethod
     def _load_prop(
         property_schema: Union[TJsonObject, TClassyJsonType], value: TJson = None
@@ -461,16 +471,11 @@ class ObjectSchema(BaseSchema):
 
         return value
 
-    # TODO: fix overload types so ObjectSchema return TJsonObject
-    def load(self, instance: TJson, validate: bool = True) -> Any:
-        """Load object"""
-        instance = super().load(instance, validate=validate)
-        if not isinstance(instance, dict):
-            raise TypeError(f"Wrong instance base type: {type(instance)}")
+    def _load_known_properties(self, instance: TJson) -> Dict:
+        properties = self.schema_properties or {}
 
-        props = self.get("properties", {})
         data = {}
-        for key, prop_schema in props.items():
+        for key, prop_schema in properties.items():
             if key in instance:
                 data[key] = self._load_prop(prop_schema, instance[key])
             elif "default" in prop_schema:
@@ -480,7 +485,32 @@ class ObjectSchema(BaseSchema):
                 else:
                     value = default
                 data[key] = value
+        return data
 
+    def _load_additional_properties(self, instance: TJson) -> Dict:
+        properties = self.schema_properties or {}
+
+        if self.schema_additional_properties is None:
+            additional_properties = self.schema_properties is None
+        else:
+            additional_properties = self.schema_additional_properties
+
+        data = {}
+        if additional_properties:
+            for key in instance:
+                if key not in properties:
+                    data[key] = self._load_prop(None, instance[key])
+        return data
+
+    # TODO: fix overload types so ObjectSchema return TJsonObject
+    def load(self, instance: TJson, validate: bool = True) -> Any:
+        """Load object"""
+        instance = super().load(instance, validate=validate)
+        if not isinstance(instance, dict):
+            raise TypeError(f"Wrong instance base type: {type(instance)}")
+
+        data = self._load_known_properties(instance)
+        data.update(self._load_additional_properties(instance))
         return data
 
     def __init__(  # pylint: disable=too-many-arguments

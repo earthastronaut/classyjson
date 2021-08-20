@@ -30,6 +30,14 @@ class TestDefaultJsonLoad(unittest.TestCase):
         self.assertIsInstance(obj, MyClassy)
         self.assertEqual(obj, {"k1": 1})
 
+    def test_load_classy_object(self):
+        obj = classyjson.load(
+            '{"k1": 1}',
+            classy=ClassyObject,
+        )
+        self.assertIsInstance(obj, ClassyObject)
+        self.assertEqual(obj, {"k1": 1})
+
 
 if __name__ == "__main__":
     unittest.main()
