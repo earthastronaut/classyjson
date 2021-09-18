@@ -19,3 +19,6 @@ flake8
 
 # Type Checking
 mypy
+
+# Packaging
+twine

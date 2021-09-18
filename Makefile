@@ -49,6 +49,10 @@ version:
 venv:
 	source dev/bin/activate.sh && which python
 
+prepublish:
+	source dev/bin/activate.sh && twine check dist/*
+	tar tzf dist/classyjson-*.tar.gz
+
 # Show help
 help:
 	@echo ""
