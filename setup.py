@@ -24,6 +24,7 @@ setup(
     license="MIT",
     description="Wrap jsonschema in python classes",
     long_description=load_description(),
+    long_description_content_type="text/markdown",
     python_requires=">=3.5",
     packages=find_packages(),
     extra_requires={
