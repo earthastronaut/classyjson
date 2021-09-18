@@ -27,6 +27,7 @@ setup(
     long_description_content_type="text/markdown",
     python_requires=">=3.5",
     packages=find_packages(),
+    py_modules=["classyjson"],
     extra_requires={
         # add schema validation
         "jsonschema": ["jsonschema"],
