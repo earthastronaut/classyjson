@@ -3,6 +3,9 @@
 Classy json is the best friend to invite to the party. He knows how to check all the other json that comes in and class them up.
 
 
+(Ok I had fun making this but actually you should use [pydantic](https://pydantic-docs.helpmanual.io/))
+
+
 # Quick Start
 
 `pip install classyjson`
